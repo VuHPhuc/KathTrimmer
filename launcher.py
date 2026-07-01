@@ -21,7 +21,10 @@ import PIL.Image
 import PIL.ImageTk
 import cv2
 import ffmpeg
-import vlc
+try:
+    import vlc
+except Exception:
+    pass
 import subprocess
 import traceback
 import time
