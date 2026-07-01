@@ -13,11 +13,12 @@ python -m PyInstaller ^
   --windowed ^
   --name "KathTrimmer" ^
   --icon "assets\icon.ico" ^
+  --add-data "assets;assets" ^
   --hidden-import "tkinterdnd2" ^
   --hidden-import "PIL._tkinter_finder" ^
   --collect-all "customtkinter" ^
   --collect-all "tkinterdnd2" ^
-  launcher.py
+  main.py
 
 echo.
 if exist "dist\KathTrimmer.exe" (

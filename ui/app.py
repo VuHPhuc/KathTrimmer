@@ -331,10 +331,19 @@ class KathTrimmerApp:
                            activebackground=COLORS["bg_card"], selectcolor=COLORS["accent_bg"],
                            relief="flat", cursor="hand2").pack(side="left", padx=(4, 8))
         self._build_export_row(self.compress_panel, "compress")
+        
+        # Warning label for compressed video (hidden by default)
+        self.compress_warning = tk.Label(
+            self.compress_panel,
+            text="⚠️ Video này dường như đã được nén trước đó. Nén tiếp có thể làm giảm chất lượng hình ảnh!",
+            font=FONTS["small"], bg=COLORS["danger_bg"], fg=COLORS["danger"],
+            anchor="w", justify="left", padx=8, pady=4
+        )
 
     def _build_export_row(self, frame, mode_key):
         r2 = tk.Frame(frame, bg=COLORS["bg_card"])
         r2.pack(fill="x", padx=14, pady=(2, 8))
+        setattr(self, f"export_row_{mode_key}", r2)
 
         tk.Label(r2, text="📂 Lưu vào:", font=FONTS["small"],
                  bg=COLORS["bg_card"], fg=COLORS["text_secondary"]).pack(side="left")
@@ -563,6 +572,12 @@ class KathTrimmerApp:
             if e:
                 e.delete(0, "end")
                 e.insert(0, default_out)
+
+        # Check compression warning
+        if info.get("is_compressed", False):
+            self.compress_warning.pack(fill="x", padx=14, pady=(2, 6), before=self.export_row_compress)
+        else:
+            self.compress_warning.pack_forget()
 
         # Info bar
         self.info_var.set(

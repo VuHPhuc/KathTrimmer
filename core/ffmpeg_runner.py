@@ -11,7 +11,7 @@ from typing import Callable, Optional
 def get_ffmpeg_path():
     """Return path to ffmpeg binary."""
     if getattr(sys, 'frozen', False):
-        base = sys._MEIPASS
+        base = os.path.dirname(sys.executable)
     else:
         base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -189,6 +189,7 @@ def compress_video(
         "-crf", str(crf),
         "-preset", preset,
         "-c:a", "copy",  # keep audio unchanged
+        "-metadata", "comment=KathTrimmerCompressed",
         output_path
     ]
     return run_ffmpeg(args, total_duration=total_duration, progress_cb=progress_cb, done_cb=done_cb)

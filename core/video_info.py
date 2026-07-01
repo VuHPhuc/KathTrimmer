@@ -10,7 +10,7 @@ def get_ffprobe_path():
     """Return the path to ffprobe binary."""
     if getattr(sys, 'frozen', False):
         # Running as PyInstaller bundle
-        base = sys._MEIPASS
+        base = os.path.dirname(sys.executable)
     else:
         base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -82,6 +82,26 @@ def get_video_info(filepath: str) -> dict:
     size_bytes = os.path.getsize(filepath) if os.path.isfile(filepath) else 0
     size_mb = size_bytes / (1024 * 1024)
 
+    # Check if the video has already been compressed
+    tags = fmt.get("tags", {}) or {}
+    comment = tags.get("comment", "")
+    is_compressed = False
+    if "KathTrimmerCompressed" in comment or "compressed" in os.path.basename(filepath).lower():
+        is_compressed = True
+    else:
+        # Calculate BPP (Bits Per Pixel) to detect low-bitrate pre-compressed videos
+        try:
+            width = int(video_stream.get("width", 0) or 0)
+            height = int(video_stream.get("height", 0) or 0)
+            if width > 0 and height > 0 and fps > 0 and duration > 0:
+                avg_bitrate_bps = (size_bytes * 8) / duration
+                bpp = avg_bitrate_bps / (width * height * fps)
+                # BPP < 0.1 is standard web compression (low bitrate)
+                if bpp < 0.1:
+                    is_compressed = True
+        except Exception:
+            pass
+
     return {
         "duration_s":   duration,
         "duration_str": seconds_to_str(duration),
@@ -94,6 +114,7 @@ def get_video_info(filepath: str) -> dict:
         "size_mb":      size_mb,
         "filename":     os.path.basename(filepath),
         "filepath":     filepath,
+        "is_compressed": is_compressed,
     }
 
 

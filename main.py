@@ -13,8 +13,12 @@ if ROOT not in sys.path:
 def check_ffmpeg() -> bool:
     """Return True if ffmpeg/ffprobe are available (bundled or on PATH)."""
     import subprocess
-    ffmpeg_path = os.path.join(ROOT, "ffmpeg_bin", "ffmpeg.exe")
-    ffprobe_path = os.path.join(ROOT, "ffmpeg_bin", "ffprobe.exe")
+    if getattr(sys, 'frozen', False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = ROOT
+    ffmpeg_path = os.path.join(base, "ffmpeg_bin", "ffmpeg.exe")
+    ffprobe_path = os.path.join(base, "ffmpeg_bin", "ffprobe.exe")
     if os.path.isfile(ffmpeg_path) and os.path.isfile(ffprobe_path):
         return True
     try:
