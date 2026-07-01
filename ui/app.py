@@ -1,7 +1,7 @@
 # ui/app.py — KathTrimmer: VLC-first smooth video preview
 
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, ttk
 import os
 import time
 
@@ -23,6 +23,8 @@ except ImportError:
 
 
 class KathTrimmerApp:
+    CURRENT_VERSION = "1.0.0"
+
     """
     Video-centric layout — VLC preview takes centre stage.
 
@@ -68,6 +70,10 @@ class KathTrimmerApp:
 
         # Start OpenCV display loop (no-op when VLC is in use)
         self._display_loop()
+
+        # Check for updates in a background thread
+        import threading
+        threading.Thread(target=self._check_update_thread, daemon=True).start()
 
     # ─── Window ────────────────────────────────────────────────────────────────
 
@@ -725,3 +731,101 @@ class KathTrimmerApp:
 
     def _set_progress(self, pct: float):
         self.prog_canvas.coords(self._prog_bar, 0, 0, 160 * pct / 100, 6)
+
+    # ─── Auto-Update ───────────────────────────────────────────────────────────
+
+    def _check_update_thread(self):
+        from core.updater import check_for_update
+        update_info = check_for_update(self.CURRENT_VERSION)
+        if update_info:
+            self.root.after(1000, self._prompt_update, update_info)
+
+    def _prompt_update(self, update_info: dict):
+        ver = update_info["version"]
+        url = update_info["download_url"]
+        log = update_info.get("changelog", "")
+        
+        msg = f"Đã tìm thấy phiên bản mới: {ver}\n"
+        if log:
+            # Clean up long changelogs
+            log_lines = log.split("\n")
+            if len(log_lines) > 8:
+                log = "\n".join(log_lines[:8]) + "\n... (và một số cập nhật khác)"
+            msg += f"\nNội dung cập nhật:\n{log}\n"
+        msg += "\nBạn có muốn tự động tải về và nâng cấp ứng dụng ngay bây giờ không?"
+        
+        if messagebox.askyesno("Cập nhật phiên bản mới", msg, parent=self.root):
+            self._start_update_download(url, ver)
+
+    def _start_update_download(self, download_url: str, version_tag: str):
+        # Create a progress window
+        progress_win = tk.Toplevel(self.root)
+        progress_win.title("Đang tải cập nhật")
+        progress_win.resizable(False, False)
+        progress_win.configure(bg=COLORS["bg_card"])
+        progress_win.grab_set()
+        progress_win.parent = self.root
+        
+        # Center the window
+        progress_win.update_idletasks()
+        w, h = 420, 160
+        rx = self.root.winfo_x() + self.root.winfo_width() // 2 - w // 2
+        ry = self.root.winfo_y() + self.root.winfo_height() // 2 - h // 2
+        progress_win.geometry(f"{w}x{h}+{rx}+{ry}")
+        
+        # UI components
+        tk.Label(progress_win, text=f"Đang tải bản cập nhật mới ({version_tag})...", 
+                 font=FONTS["subhead"], bg=COLORS["bg_card"], fg=COLORS["text_primary"]).pack(pady=(20, 10))
+                 
+        prog_bar = ttk.Progressbar(progress_win, orient="horizontal", length=340, mode="determinate")
+        prog_bar.pack(pady=10)
+        
+        pct_lbl = tk.Label(progress_win, text="0%", font=FONTS["small"], bg=COLORS["bg_card"], fg=COLORS["text_secondary"])
+        pct_lbl.pack(pady=2)
+        
+        # Progress callback (run in main GUI thread)
+        def update_progress(pct: float):
+            prog_bar["value"] = pct
+            pct_lbl.configure(text=f"{pct:.0f}%")
+            
+        def on_download_success(new_exe: str):
+            from core.updater import apply_update
+            try:
+                progress_win.destroy()
+            except Exception:
+                pass
+            messagebox.showinfo(
+                "Tải hoàn tất!", 
+                "Ứng dụng sẽ tự động đóng lại để cài đặt bản cập nhật mới và khởi động lại ngay lập tức.",
+                parent=self.root
+            )
+            apply_update(new_exe)
+            self._on_close()
+            
+        def on_download_fail():
+            try:
+                progress_win.destroy()
+            except Exception:
+                pass
+            messagebox.showerror(
+                "Lỗi cập nhật", 
+                "Tải bản cập nhật thất bại. Vui lòng thử lại sau!", 
+                parent=self.root
+            )
+            
+        def run_download():
+            from core.updater import download_update
+            
+            def safe_progress(pct):
+                self.root.after(0, lambda: update_progress(pct))
+                
+            new_exe = download_update(download_url, progress_cb=safe_progress)
+            
+            if new_exe and os.path.isfile(new_exe):
+                self.root.after(0, lambda: on_download_success(new_exe))
+            else:
+                self.root.after(0, on_download_fail)
+                
+        # Start download in another thread
+        import threading
+        threading.Thread(target=run_download, daemon=True).start()
