@@ -335,7 +335,7 @@ class KathTrimmerApp:
         # Warning label for compressed video (hidden by default)
         self.compress_warning = tk.Label(
             self.compress_panel,
-            text="⚠️ Video này dường như đã được nén trước đó. Nén tiếp có thể làm giảm chất lượng hình ảnh!",
+            text="⚠️ Video này dường như đã được nén tối ưu từ trước. Nén tiếp có thể làm giảm chất lượng hình ảnh và không giảm thêm được dung lượng (MB) nào!",
             font=FONTS["small"], bg=COLORS["danger_bg"], fg=COLORS["danger"],
             anchor="w", justify="left", padx=8, pady=4
         )
